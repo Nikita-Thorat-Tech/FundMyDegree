@@ -3,18 +3,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   GraduationCap, 
   Wallet, 
-  LineChart, 
   ShieldCheck, 
-  AlertCircle, 
   Sparkles, 
   Send, 
   Loader2, 
   RefreshCcw,
   MessageSquare, 
   HelpCircle, 
-  Clock, 
   Briefcase,
-  ChevronRight,
   Target,
   Zap,
   Layers,
@@ -24,9 +20,9 @@ import {
   UserCircle,
   TrendingUp,
   Scale,
-  ZapOff,
   Coins,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { UserProfile, ChatMessage, Mode, ActivityItem, DashboardState } from './types';
@@ -45,11 +41,10 @@ import {
 import { signInWithGoogle, loginWithEmail, registerWithEmail, logout, auth } from "./services/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
-
 // --- Global Constants & Mock Data ---
 const INITIAL_PROFILE: UserProfile = {
-  name: "Rutuja Patil",
-  gpa: 8.2,
+  name: "",
+  gpa: 0,
   field: "Computer Science",
   goal: "MS in Computer Science",
   budget: 50000,
@@ -59,7 +54,7 @@ const INITIAL_PROFILE: UserProfile = {
 
 const INITIAL_DASHBOARD: DashboardState = {
   riskScore: 'Safe',
-  aiInsight: "Based on your 8.2 GPA, Germany's Public Universities are your safest path with a 1.1 year payback period.",
+  aiInsight: "Complete your profile to get personalized AI insights for your education journey.",
   roi: { cost: "$22,500", salary: "$72,000", payback: "1.1 Years" },
   admissionChance: 85,
   loanEligibility: 92,
@@ -91,11 +86,9 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      // Use real user's name if available
       if (currentUser?.displayName) {
         setProfile(prev => ({ ...prev, name: currentUser.displayName! }));
       } else if (currentUser?.email) {
-        // Fallback to email prefix if no display name
         setProfile(prev => ({ ...prev, name: currentUser.email!.split('@')[0] }));
       }
       setAuthLoading(false);
@@ -157,7 +150,6 @@ export default function App() {
     setLoading(false);
   };
 
-  // Show nothing while checking auth state
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-indigo-950">
@@ -171,7 +163,6 @@ export default function App() {
     );
   }
 
-  // Show auth page if not logged in
   if (!user) {
     return <AuthPage />;
   }
@@ -188,7 +179,22 @@ export default function App() {
           >
             <ArrowLeft size={24} className="text-slate-900" />
           </motion.button>
-          <ProfileBuilder />
+          <ProfileBuilder onProfileComplete={(profileData) => {
+            setProfile({
+              name: user?.displayName || user?.email?.split('@')[0] || 'Student',
+              gpa: parseFloat(profileData.gpa) || 0,
+              field: profileData.field,
+              goal: `${profileData.degree} in ${profileData.field}`,
+              budget: profileData.budget / 75,
+              preferredCountries: profileData.countries,
+              educationLevel: profileData.degree
+            });
+            setDashboard(prev => ({
+              ...prev,
+              aiInsight: `Based on your ${profileData.gpa} GPA in ${profileData.field}, your top countries ${profileData.countries.slice(0,2).join(' & ')} offer strong ROI. Your ${profileData.riskTolerance} risk profile is factored in.`
+            }));
+            setCurrentView('dashboard');
+          }} />
         </div>
       )}
 
@@ -233,7 +239,9 @@ export default function App() {
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input placeholder="Search roadmaps..." className="bg-slate-100 border-none rounded-full py-2.5 pl-12 pr-4 text-xs w-64 focus:ring-2 focus:ring-indigo-600/20 transition-all" />
                 </div>
-                <button className="bg-slate-900 text-white pl-4 pr-5 py-2.5 rounded-xl text-xs font-bold hover:bg-black transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2">
+                <button 
+                  onClick={() => handleSend("Give me a complete optimized path for my profile including best universities, ROI, and action plan.")}
+                  className="bg-slate-900 text-white pl-4 pr-5 py-2.5 rounded-xl text-xs font-bold hover:bg-black transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2">
                   <Zap size={14} className="text-indigo-400" /> Optimize My Path
                 </button>
                 <button
@@ -265,9 +273,14 @@ export default function App() {
                         <span className="text-[11px] font-bold uppercase tracking-widest leading-none">Goal: {profile.goal}</span>
                       </div>
                       <div>
-                        <h1 className="text-5xl font-black text-white tracking-tighter leading-tight italic">Hi, {profile.name.split(' ')[0]}.</h1>
+                        <h1 className="text-5xl font-black text-white tracking-tighter leading-tight italic">
+                          Hi, {(profile.name || 'Student').split(' ')[0]}.
+                        </h1>
                         <p className="text-xl text-indigo-100/70 font-medium mt-4 max-w-lg leading-relaxed">
-                          Your GPA {profile.gpa} opens doors to 14 top-tier programs. Ready for your 10-year simulation?
+                          {profile.gpa > 0 
+                            ? `Your GPA ${profile.gpa} opens doors to 14 top-tier programs. Ready for your 10-year simulation?`
+                            : `Welcome! Complete your profile to unlock your personalized AI plan.`
+                          }
                         </p>
                       </div>
                       <div className="p-6 bg-white/10 border border-white/10 rounded-3xl backdrop-blur-2xl">
@@ -286,8 +299,8 @@ export default function App() {
                     <div className="lg:col-span-5 grid grid-cols-2 gap-5">
                       <RiskGauge score={dashboard.riskScore} />
                       <StatCard label="Salary Cap" value="$180k" detail="Post-5 Years" />
-                      <StatCard label="Loan Odds" value="92%" detail="Eligible Now" />
-                      <StatCard label="Admission" value="85%" detail="Est. Probability" />
+                      <StatCard label="Loan Odds" value={`${dashboard.loanEligibility}%`} detail="Eligible Now" />
+                      <StatCard label="Admission" value={`${dashboard.admissionChance}%`} detail="Est. Probability" />
                     </div>
                   </div>
                 </motion.section>
@@ -296,7 +309,7 @@ export default function App() {
                   <QuickAction icon={<Scale size={20} />} label="Worst Case" onClick={() => handleSend("Simulate the worst-case scenario for my plan.")} />
                   <QuickAction icon={<Coins size={20} />} label="Negotiate Cost" onClick={() => handleSend("Can you optimize my costs or suggest cheaper alternatives?")} />
                   <QuickAction icon={<TrendingUp size={20} />} label="Life Outcome" onClick={() => handleSend("Show me my 10-year life outcome projection.")} />
-                  <QuickAction icon={<Briefcase size={20} />} label="Carrier Roadmap" onClick={() => handleSend("What does my career roadmap look like after this degree?")} />
+                  <QuickAction icon={<Briefcase size={20} />} label="Career Roadmap" onClick={() => handleSend("What does my career roadmap look like after this degree?")} />
                   <QuickAction icon={<Zap size={20} />} label="Timeline Sync" onClick={() => handleSend("Generate a smart timeline for my prep.")} className="hidden lg:flex" />
                 </section>
 
@@ -350,7 +363,7 @@ export default function App() {
                       <div className="flex justify-between items-center mb-10">
                         <div className="space-y-1">
                           <h3 className="text-xl font-bold text-slate-800">Income vs Growth Simulation</h3>
-                          <p className="text-xs text-slate-400 font-medium italic">Predictive data for Computer Science graduates</p>
+                          <p className="text-xs text-slate-400 font-medium italic">Predictive data for {profile.field || 'Computer Science'} graduates</p>
                         </div>
                         <button className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-black transition-all">
                           <RefreshCcw size={18} />
@@ -609,56 +622,38 @@ function AuthPage() {
 
         <div className="bg-white/10 backdrop-blur-2xl rounded-[32px] border border-white/20 p-8 shadow-2xl">
           <div className="flex bg-white/5 rounded-2xl p-1 mb-8 border border-white/10">
-            <button
-              onClick={() => { setTab('login'); setError(''); }}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-                tab === 'login' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-white/50 hover:text-white'
-              }`}
-            >Login</button>
-            <button
-              onClick={() => { setTab('register'); setError(''); }}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-                tab === 'register' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-white/50 hover:text-white'
-              }`}
-            >Register</button>
+            <button onClick={() => { setTab('login'); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${tab === 'login' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-white/50 hover:text-white'}`}>
+              Login
+            </button>
+            <button onClick={() => { setTab('register'); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${tab === 'register' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-white/50 hover:text-white'}`}>
+              Register
+            </button>
           </div>
 
           <div className="space-y-4">
             {tab === 'register' && (
               <div>
                 <label className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2 block">Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
-                  className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                />
+                  className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
               </div>
             )}
-
             <div>
               <label className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2 block">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleEmailAuth()}
                 placeholder="you@example.com"
-                className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
+                className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
             </div>
-
             <div>
               <label className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2 block">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleEmailAuth()}
                 placeholder="Min. 6 characters"
-                className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
+                className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
             </div>
 
             {error && (
@@ -668,11 +663,8 @@ function AuthPage() {
               </div>
             )}
 
-            <button
-              onClick={handleEmailAuth}
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-            >
+            <button onClick={handleEmailAuth} disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
               {loading ? <Loader2 size={20} className="animate-spin" /> : (tab === 'login' ? 'Login to Dashboard' : 'Create Account')}
             </button>
 
@@ -682,11 +674,8 @@ function AuthPage() {
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
-            <button
-              onClick={handleGoogle}
-              disabled={loading}
-              className="w-full bg-white hover:bg-slate-100 text-slate-800 font-bold py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
-            >
+            <button onClick={handleGoogle} disabled={loading}
+              className="w-full bg-white hover:bg-slate-100 text-slate-800 font-bold py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50">
               <svg width="20" height="20" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                 <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -697,10 +686,7 @@ function AuthPage() {
             </button>
           </div>
         </div>
-
-        <p className="text-center text-white/20 text-xs mt-6 font-medium">
-          TenzorX 2026 · Poonawalla Fincorp Hackathon
-        </p>
+        <p className="text-center text-white/20 text-xs mt-6 font-medium">TenzorX 2026 · Poonawalla Fincorp Hackathon</p>
       </div>
     </div>
   );
@@ -709,10 +695,8 @@ function AuthPage() {
 // ── SHARED COMPONENTS ──────────────────────────────────────────────────────────
 function NavIcon({ icon, active }: { icon: React.ReactNode, active?: boolean }) {
   return (
-    <button className={cn(
-      "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
-      active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/30" : "text-white/30 hover:text-white hover:bg-white/5"
-    )}>
+    <button className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
+      active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/30" : "text-white/30 hover:text-white hover:bg-white/5")}>
       {icon}
     </button>
   );
@@ -777,13 +761,8 @@ function VisualInsightCard({ title, icon, children, tags }: { title: string, ico
 
 function QuickAction({ icon, label, onClick, className }: { icon: React.ReactNode, label: string, onClick: () => void, className?: string }) {
   return (
-    <button 
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center justify-center p-8 bg-white rounded-[32px] border border-slate-200 shadow-sm transition-all gap-4 hover:border-indigo-600 hover:scale-[103%] group hover:shadow-2xl hover:shadow-indigo-600/10 active:scale-95",
-        className
-      )}
-    >
+    <button onClick={onClick}
+      className={cn("flex flex-col items-center justify-center p-8 bg-white rounded-[32px] border border-slate-200 shadow-sm transition-all gap-4 hover:border-indigo-600 hover:scale-[103%] group hover:shadow-2xl hover:shadow-indigo-600/10 active:scale-95", className)}>
       <div className="w-14 h-14 bg-slate-50 rounded-[22px] flex items-center justify-center transition-all group-hover:bg-indigo-600 text-slate-400 group-hover:text-white group-hover:rotate-12">
         {icon}
       </div>
