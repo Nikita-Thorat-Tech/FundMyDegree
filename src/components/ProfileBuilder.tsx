@@ -1,32 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
-  Sparkles,
-  Target,
-  Zap,
-  Calendar,
-  CheckCircle2,
-  Lightbulb,
-  BarChart3,
-  Trophy,
-  DollarSign,
+  Sparkles, Target, Zap, Calendar, CheckCircle2,
+  Lightbulb, BarChart3, Trophy, DollarSign,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface ProfileData {
-  gpa: string;
-  field: string;
-  countries: string[];
-  degree: string;
-  specialization: string;
-  dreamUniversity: string;
-  budget: number;
-  coApplicantIncome: string;
-  collateral: boolean;
+  gpa: string; field: string; countries: string[]; degree: string;
+  specialization: string; dreamUniversity: string; budget: number;
+  coApplicantIncome: string; collateral: boolean;
   riskTolerance: 'Low' | 'Medium' | 'High';
   lifestyleGoal: 'save' | 'balanced' | 'spend';
-  intake: string;
-  examsGiven: string[];
+  intake: string; examsGiven: string[];
 }
 
 interface ProfileBuilderProps {
@@ -41,91 +27,67 @@ const INTAKES = ['Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2026'];
 const EXAMS = ['IELTS', 'TOEFL', 'GRE', 'GMAT'];
 
 const getSmartHints = (data: ProfileData) => [
-  {
-    hint: '🎯 Students with GPA 8+ have 40% higher admission chances in top US universities',
-    condition: parseFloat(data.gpa) >= 8
-  },
-  {
-    hint: '🇩🇪 Germany offers tuition-free MS programs — popular with high GPA students',
-    condition: data.countries.includes('Germany')
-  },
-  {
-    hint: '💰 Your budget supports MS in Germany or Netherlands perfectly',
-    condition: data.budget >= 2500000 && data.countries.includes('Germany')
-  },
-  {
-    hint: '📊 CS graduates earn 35% more in the first 5 years abroad',
-    condition: data.field === 'Computer Science'
-  },
-  {
-    hint: '✅ Having both IELTS + GRE increases Canada admission chances by 50%',
-    condition: data.examsGiven.length >= 2
-  }
+  { hint: '🎯 Students with GPA 8+ have 40% higher admission chances in top US universities', condition: parseFloat(data.gpa) >= 8 },
+  { hint: '🇩🇪 Germany offers tuition-free MS programs — popular with high GPA students', condition: data.countries.includes('Germany') },
+  { hint: '💰 Your budget supports MS in Germany or Netherlands perfectly', condition: data.budget >= 2500000 && data.countries.includes('Germany') },
+  { hint: '📊 CS graduates earn 35% more in the first 5 years abroad', condition: data.field === 'Computer Science' },
+  { hint: '✅ Having both IELTS + GRE increases Canada admission chances by 50%', condition: data.examsGiven.length >= 2 }
 ];
 
 const calculateProfileStrength = (data: ProfileData) => {
   let strength = 0;
   const suggestions: string[] = [];
-
-  if (data.gpa) { strength += 15; } else suggestions.push('Add your GPA for better predictions');
-  if (data.field) { strength += 15; } else suggestions.push('Select your field of interest');
-  if (data.countries.length > 0) { strength += 15; } else suggestions.push('Choose preferred countries');
-  if (data.degree) { strength += 15; } else suggestions.push('Select your target degree');
-  if (data.budget > 0) { strength += 15; } else suggestions.push('Set your budget range');
-  if (data.riskTolerance) { strength += 10; } else suggestions.push('Select your risk tolerance');
+  if (data.gpa) { strength += 20; } else suggestions.push('Add your GPA for better predictions');
+  if (data.field) { strength += 20; } else suggestions.push('Select your field of interest');
+  if (data.countries.length > 0) { strength += 20; } else suggestions.push('Choose preferred countries');
+  if (data.degree) { strength += 20; } else suggestions.push('Select your target degree');
   if (data.intake) { strength += 10; } else suggestions.push('Choose target intake');
-  if (data.examsGiven.length > 0) { strength += 5; } else suggestions.push('Add exam scores to maximize chances');
-
+  if (data.examsGiven.length > 0) { strength += 10; } else suggestions.push('Add exam scores to maximize chances');
   return { strength: Math.min(strength, 100), suggestions };
 };
 
 export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProps) {
   const [data, setData] = useState<ProfileData>({
-    gpa: '',
-    field: '',
-    countries: [],
-    degree: '',
-    specialization: '',
-    dreamUniversity: '',
-    budget: 2500000,
-    coApplicantIncome: '',
-    collateral: false,
-    riskTolerance: 'Medium',
-    lifestyleGoal: 'balanced',
-    intake: '',
-    examsGiven: []
+    gpa: '', field: '', countries: [], degree: '', specialization: '',
+    dreamUniversity: '', budget: 2500000, coApplicantIncome: '',
+    collateral: false, riskTolerance: 'Medium', lifestyleGoal: 'balanced',
+    intake: '', examsGiven: []
   });
+  const [generating, setGenerating] = useState(false);
 
   const { strength, suggestions } = useMemo(() => calculateProfileStrength(data), [data]);
   const activeHints = useMemo(() => getSmartHints(data).filter(h => h.condition), [data]);
+  const canGenerate = !!(data.gpa && data.field && data.countries.length > 0 && data.degree);
 
-  const toggleCountry = (country: string) => {
-    setData(prev => ({
-      ...prev,
-      countries: prev.countries.includes(country)
-        ? prev.countries.filter(c => c !== country)
-        : [...prev.countries, country]
-    }));
-  };
+  const toggleCountry = (country: string) => setData(prev => ({
+    ...prev,
+    countries: prev.countries.includes(country)
+      ? prev.countries.filter(c => c !== country)
+      : [...prev.countries, country]
+  }));
 
-  const toggleExam = (exam: string) => {
-    setData(prev => ({
-      ...prev,
-      examsGiven: prev.examsGiven.includes(exam)
-        ? prev.examsGiven.filter(e => e !== exam)
-        : [...prev.examsGiven, exam]
-    }));
-  };
+  const toggleExam = (exam: string) => setData(prev => ({
+    ...prev,
+    examsGiven: prev.examsGiven.includes(exam)
+      ? prev.examsGiven.filter(e => e !== exam)
+      : [...prev.examsGiven, exam]
+  }));
 
   const handleGenerate = () => {
-    if (onProfileComplete) {
-      onProfileComplete(data);
-    }
+    if (!canGenerate || generating) return;
+    setGenerating(true);
+    setTimeout(() => {
+      try {
+        if (onProfileComplete) onProfileComplete(data);
+      } catch (e) {
+        console.error('Profile complete error:', e);
+        setGenerating(false);
+      }
+    }, 400);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
-      {/* Header */}
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -143,7 +105,7 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
               <p className="text-2xl font-bold text-indigo-600">{strength}%</p>
             </div>
             <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-              <CheckCircle2 size={24} className={cn(strength >= 70 ? 'text-emerald-500' : 'text-amber-500')} />
+              <CheckCircle2 size={24} className={cn(canGenerate ? 'text-emerald-500' : 'text-amber-500')} />
             </div>
           </div>
         </div>
@@ -151,10 +113,8 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Form */}
           <div className="lg:col-span-2 space-y-8">
 
-            {/* Section 1: Basic Profile */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-[32px] p-8 shadow-lg shadow-indigo-100/30 border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
@@ -163,7 +123,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <h2 className="text-xl font-bold text-slate-900">Basic Profile</h2>
               </div>
-
               <div className="mb-6">
                 <label className="block text-sm font-bold text-slate-700 mb-3">GPA / Percentage</label>
                 <div className="relative">
@@ -174,7 +133,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   <span className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold">/10</span>
                 </div>
               </div>
-
               <div className="mb-6">
                 <label className="block text-sm font-bold text-slate-700 mb-3">Field of Interest</label>
                 <select value={data.field} onChange={(e) => setData(prev => ({ ...prev, field: e.target.value }))}
@@ -183,7 +141,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   {FIELDS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-4">Preferred Countries</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -201,7 +158,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
               </div>
             </motion.div>
 
-            {/* Section 2: Degree Preferences */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="bg-white rounded-[32px] p-8 shadow-lg shadow-purple-100/30 border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
@@ -210,7 +166,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <h2 className="text-xl font-bold text-slate-900">Degree Preferences</h2>
               </div>
-
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-3">Target Degree</label>
@@ -229,7 +184,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   </select>
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-3">Dream University (Optional)</label>
                 <input type="text" value={data.dreamUniversity}
@@ -239,7 +193,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
               </div>
             </motion.div>
 
-            {/* Section 3: Financial Details */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="bg-white rounded-[32px] p-8 shadow-lg shadow-emerald-100/30 border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
@@ -248,7 +201,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <h2 className="text-xl font-bold text-slate-900">Financial Details</h2>
               </div>
-
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <label className="text-sm font-bold text-slate-700">Budget Range</label>
@@ -261,7 +213,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   <span>₹10L</span><span>₹50L</span>
                 </div>
               </div>
-
               <div className="mb-6">
                 <label className="block text-sm font-bold text-slate-700 mb-3">Co-applicant Annual Income</label>
                 <input type="number" value={data.coApplicantIncome}
@@ -269,7 +220,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   placeholder="₹5,00,000"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-base font-semibold focus:ring-2 focus:ring-emerald-600/30 focus:border-transparent transition-all" />
               </div>
-
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <div>
                   <p className="text-sm font-bold text-slate-700">Collateral Available?</p>
@@ -284,7 +234,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
               </div>
             </motion.div>
 
-            {/* Section 4: Risk & Lifestyle */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="bg-white rounded-[32px] p-8 shadow-lg shadow-amber-100/30 border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
@@ -293,7 +242,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <h2 className="text-xl font-bold text-slate-900">Risk & Lifestyle</h2>
               </div>
-
               <div className="mb-8">
                 <label className="block text-sm font-bold text-slate-700 mb-4">Risk Tolerance</label>
                 <div className="grid grid-cols-3 gap-4">
@@ -309,7 +257,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   ))}
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-4">Lifestyle Goal</label>
                 <div className="grid grid-cols-3 gap-4">
@@ -332,7 +279,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
               </div>
             </motion.div>
 
-            {/* Section 5: Timeline */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
               className="bg-white rounded-[32px] p-8 shadow-lg shadow-cyan-100/30 border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
@@ -341,7 +287,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <h2 className="text-xl font-bold text-slate-900">Timeline</h2>
               </div>
-
               <div className="mb-6">
                 <label className="block text-sm font-bold text-slate-700 mb-3">Target Intake</label>
                 <select value={data.intake} onChange={(e) => setData(prev => ({ ...prev, intake: e.target.value }))}
@@ -350,7 +295,6 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   {INTAKES.map(i => <option key={i} value={i}>{i}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-4">Exams Given</label>
                 <div className="space-y-3">
@@ -367,13 +311,12 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
             </motion.div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-[32px] p-8 text-white shadow-xl shadow-indigo-600/30 sticky top-32">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold">Profile Strength</h3>
-                <CheckCircle2 size={28} className={cn(strength >= 70 ? 'text-emerald-300' : 'text-amber-300')} />
+                <CheckCircle2 size={28} className={cn(canGenerate ? 'text-emerald-300' : 'text-amber-300')} />
               </div>
               <div className="flex items-center justify-center mb-8">
                 <div className="relative w-32 h-32">
@@ -385,7 +328,7 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-3xl font-bold">{strength}%</span>
-                    <span className="text-xs text-white/70 mt-1">{strength >= 70 ? '✓ Ready' : 'In Progress'}</span>
+                    <span className="text-xs text-white/70 mt-1">{canGenerate ? '✓ Ready' : 'In Progress'}</span>
                   </div>
                 </div>
               </div>
@@ -400,6 +343,13 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                     </motion.div>
                   ))}
                 </div>
+              )}
+              {canGenerate && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-3 bg-emerald-400/20 rounded-2xl border border-emerald-400/30 text-center">
+                  <p className="text-xs font-bold text-emerald-300">✅ Ready to generate your plan!</p>
+                  <p className="text-xs text-white/60 mt-1">Scroll down and click the button</p>
+                </motion.div>
               )}
             </motion.div>
 
@@ -431,8 +381,16 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                   <span className="font-bold text-slate-900">{data.gpa || '—'}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-slate-600">Field</span>
+                  <span className="font-bold text-slate-900">{data.field || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Degree</span>
+                  <span className="font-bold text-slate-900">{data.degree || '—'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-slate-600">Countries</span>
-                  <span className="font-bold text-slate-900">{data.countries.length} selected</span>
+                  <span className="font-bold text-slate-900">{data.countries.length > 0 ? data.countries.join(', ') : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Budget</span>
@@ -440,33 +398,56 @@ export default function ProfileBuilder({ onProfileComplete }: ProfileBuilderProp
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Exams</span>
-                  <span className="font-bold text-slate-900">{data.examsGiven.length || 0}</span>
+                  <span className="font-bold text-slate-900">{data.examsGiven.length > 0 ? data.examsGiven.join(', ') : '—'}</span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">Required fields</span>
+                    <span className={cn("font-bold text-xs px-2 py-1 rounded-full",
+                      canGenerate ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                      {[data.gpa, data.field, data.countries.length > 0, data.degree].filter(Boolean).length}/4
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Sticky CTA Button */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-8 px-6 z-10">
           <div className="max-w-4xl mx-auto">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={strength < 50}
+            <button
               onClick={handleGenerate}
+              disabled={!canGenerate || generating}
+              style={{ width: '100%' }}
               className={cn(
-                "w-full py-5 rounded-[24px] font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl",
-                strength >= 50
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-2xl hover:shadow-indigo-600/30"
-                  : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                "w-full py-5 rounded-[24px] font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl border-0 outline-none",
+                canGenerate && !generating
+                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-2xl hover:shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  : generating
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white cursor-wait"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
               )}>
-              <Sparkles size={24} />
-              Generate My Future Plan 🚀
-            </motion.button>
-            {strength < 50 && (
-              <p className="text-center text-xs text-slate-500 mt-3">Complete {50 - strength}% more to generate your plan</p>
+              {generating ? (
+                <>
+                  <svg className="animate-spin w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Building your plan...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={24} />
+                  Generate My Future Plan 🚀
+                </>
+              )}
+            </button>
+            {!canGenerate && !generating && (
+              <p className="text-center text-xs text-slate-500 mt-3">
+                Fill in: {[!data.gpa && 'GPA', !data.field && 'Field', data.countries.length === 0 && 'Country', !data.degree && 'Degree'].filter(Boolean).join(' · ')}
+              </p>
             )}
           </div>
         </motion.div>

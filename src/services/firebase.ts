@@ -34,6 +34,8 @@ export const registerWithEmail = async (
 ) => {
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName: name });
+  // Sign out immediately after register so user lands on login tab
+  await signOut(auth);
   return result;
 };
 
