@@ -1,7 +1,7 @@
 # FundMyDegree 🎓
 
 > AI-Powered Student Financial Planning & Loan Readiness System  
-> **TenzorX 2026 · Poonawalla Fincorp National AI Hackathon Winner**
+> **TenzorX 2026 · Poonawalla Fincorp National AI Hackathon **
 
 ---
 
