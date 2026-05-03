@@ -18,13 +18,8 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const db = getFirestore();
 
-// ── Reusable external link button (avoids <a> tag rendering issues) ──
 function LinkButton({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
-  return React.createElement(
-    'a',
-    { href, target: '_blank', rel: 'noopener noreferrer', className },
-    children
-  );
+  return React.createElement('a', { href, target: '_blank', rel: 'noopener noreferrer', className }, children);
 }
 
 function calculateDashboard(profile: UserProfile): DashboardState {
@@ -111,7 +106,7 @@ export default function App() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [showCountryCompare, setShowCountryCompare] = useState(false);
   const [showEMICalc, setShowEMICalc] = useState(false);
-  const [emiLoan, setEmiLoan] = useState('2000000');
+  const [emiLoan, setEmiLoan] = useState('');
   const [emiRate, setEmiRate] = useState('11.5');
   const [emiTenure, setEmiTenure] = useState('10');
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -605,15 +600,12 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
-
                   <div className="mt-8 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
                     <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">💡 AI Recommendation for your profile</p>
                     <p className="text-sm text-slate-700 font-medium">
                       With your {profile.field} background and GPA {profile.gpa > 0 ? profile.gpa : '—'}, <strong>USA</strong> offers the highest salary ceiling ($95k) while <strong>Germany</strong> is best for budget-conscious students with near-zero tuition. Canada balances both with strong PR pathways.
                     </p>
                   </div>
-
-                  {/* Poonawalla banner — uses LinkButton to avoid tag rendering issues */}
                   <div className="mt-4 p-5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">🏦 Fund your degree with Poonawalla Fincorp</p>
@@ -623,7 +615,6 @@ export default function App() {
                       Apply Now →
                     </LinkButton>
                   </div>
-
                   <button
                     onClick={() => { setShowCountryCompare(false); handleSend("Compare USA vs Germany vs Canada ROI for my exact profile and give me your top recommendation with reasoning."); }}
                     className="mt-6 w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
@@ -643,7 +634,6 @@ export default function App() {
                 <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                   onClick={e => e.stopPropagation()}
                   className="bg-white rounded-[40px] p-10 shadow-2xl max-w-lg w-full border border-slate-100">
-
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <h3 className="text-2xl font-bold text-slate-900">EMI Calculator</h3>
@@ -653,13 +643,19 @@ export default function App() {
                       <X size={18} />
                     </button>
                   </div>
-
                   <div className="space-y-6">
                     <div>
                       <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Loan Amount (₹)</label>
-                      <input type="number" value={emiLoan} onChange={e => setEmiLoan(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-transparent transition-all" />
-                      <p className="text-xs text-slate-400 mt-1">= ₹{(parseFloat(emiLoan || '0') / 100000).toFixed(1)}L</p>
+                      <input
+                        type="number"
+                        value={emiLoan}
+                        onChange={e => setEmiLoan(e.target.value)}
+                        placeholder="e.g. 2000000"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-transparent transition-all placeholder:text-slate-300 placeholder:font-normal"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        {emiLoan ? `= ₹${(parseFloat(emiLoan) / 100000).toFixed(1)}L` : 'Enter loan amount above'}
+                      </p>
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Interest Rate (% per year)</label>
@@ -705,10 +701,15 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {/* Two buttons — uses LinkButton for the Poonawalla CTA */}
+                  {!emiLoan && (
+                    <div className="mt-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                      <p className="text-xs text-slate-400 font-medium">Enter a loan amount above to calculate your EMI instantly ⬆️</p>
+                    </div>
+                  )}
+
                   <div className="mt-6 flex flex-col gap-3">
                     <button
-                      onClick={() => { setShowEMICalc(false); handleSend(`My education loan is ₹${parseFloat(emiLoan).toLocaleString()} at ${emiRate}% for ${emiTenure} years. Monthly EMI is ₹${emiResult.toLocaleString()}. Is this affordable for my profile? Give me a repayment strategy.`); }}
+                      onClick={() => { setShowEMICalc(false); handleSend(`My education loan is ₹${parseFloat(emiLoan || '0').toLocaleString()} at ${emiRate}% for ${emiTenure} years. Monthly EMI is ₹${emiResult.toLocaleString()}. Is this affordable for my profile? Give me a repayment strategy.`); }}
                       className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
                       <Sparkles size={18} /> Ask AI to Analyze This Loan
                     </button>
@@ -719,7 +720,6 @@ export default function App() {
                       Education loans from ₹1L to ₹50L · Rate starting 11.5% p.a. · Quick approval
                     </p>
                   </div>
-
                 </motion.div>
               </motion.div>
             )}
