@@ -18,6 +18,15 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const db = getFirestore();
 
+// ── Reusable external link button (avoids <a> tag rendering issues) ──
+function LinkButton({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+  return React.createElement(
+    'a',
+    { href, target: '_blank', rel: 'noopener noreferrer', className },
+    children
+  );
+}
+
 function calculateDashboard(profile: UserProfile): DashboardState {
   const gpa = profile.gpa || 0;
   const budget = profile.budget || 50000;
@@ -85,6 +94,8 @@ const COUNTRY_DATA = [
   { country: 'Netherlands', flag: '🇳🇱', cost: 18000, salary: 55000, loan: 'Low', score: 74, visa: 'MVV', tuition: '€8–20k/yr' },
 ];
 
+const POONAWALLA_URL = 'https://www.poonawallafincorp.com/education-loan.php';
+
 export default function App() {
   const [profile, setProfile] = useState<UserProfile>(INITIAL_PROFILE);
   const [dashboard, setDashboard] = useState<DashboardState>(calculateDashboard(INITIAL_PROFILE));
@@ -101,7 +112,7 @@ export default function App() {
   const [showCountryCompare, setShowCountryCompare] = useState(false);
   const [showEMICalc, setShowEMICalc] = useState(false);
   const [emiLoan, setEmiLoan] = useState('2000000');
-  const [emiRate, setEmiRate] = useState('10.5');
+  const [emiRate, setEmiRate] = useState('11.5');
   const [emiTenure, setEmiTenure] = useState('10');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -347,7 +358,6 @@ export default function App() {
                   </div>
                 </motion.section>
 
-                {/* Quick Actions — now with Globe + Calculator */}
                 <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
                   <QuickAction icon={<Scale size={20} />} label="Worst Case" onClick={() => handleSend("Simulate the worst-case scenario for my plan.")} />
                   <QuickAction icon={<Coins size={20} />} label="Negotiate Cost" onClick={() => handleSend("Can you optimize my costs or suggest cheaper alternatives?")} />
@@ -403,7 +413,6 @@ export default function App() {
                       </VisualInsightCard>
                     </div>
 
-                    {/* Life Outcome Simulator */}
                     <div className="bg-white rounded-[40px] p-10 border border-slate-200 shadow-xl shadow-slate-200/40">
                       <div className="flex justify-between items-center mb-6">
                         <div className="space-y-1">
@@ -415,7 +424,7 @@ export default function App() {
                           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-rose-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">EMI</span></div>
                           <button
                             onClick={() => handleSend("Show me my 10-year life outcome projection with salary vs EMI analysis.")}
-                            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Ask AI for details">
+                            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-indigo-600 hover:bg-indigo-50 transition-all">
                             <RefreshCcw size={18} />
                           </button>
                         </div>
@@ -435,7 +444,12 @@ export default function App() {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={(v) => `$${v / 1000}k`} width={50} />
+                            <YAxis
+                              axisLine={false} tickLine={false}
+                              tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }}
+                              tickFormatter={(v) => v === 0 ? '' : `$${(v / 1000).toFixed(0)}k`}
+                              width={50} domain={[0, 'auto']} tickCount={6}
+                            />
                             <Tooltip
                               contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', padding: '16px' }}
                               formatter={(v: any, name: string) => [`$${Number(v).toLocaleString()}`, name === 'salary' ? '💰 Salary' : '📋 EMI Burden']}
@@ -528,7 +542,7 @@ export default function App() {
             </main>
           </div>
 
-          {/* ✅ COUNTRY COMPARISON MODAL */}
+          {/* Country Compare Modal */}
           <AnimatePresence>
             {showCountryCompare && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -542,8 +556,7 @@ export default function App() {
                       <h3 className="text-2xl font-bold text-slate-900">Country Comparison Engine</h3>
                       <p className="text-xs text-slate-400 mt-1 font-medium">Based on your {profile.field} profile · AI Ranked by ROI</p>
                     </div>
-                    <button onClick={() => setShowCountryCompare(false)}
-                      className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
+                    <button onClick={() => setShowCountryCompare(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
                       <X size={18} />
                     </button>
                   </div>
@@ -592,12 +605,25 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
+
                   <div className="mt-8 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
                     <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">💡 AI Recommendation for your profile</p>
                     <p className="text-sm text-slate-700 font-medium">
                       With your {profile.field} background and GPA {profile.gpa > 0 ? profile.gpa : '—'}, <strong>USA</strong> offers the highest salary ceiling ($95k) while <strong>Germany</strong> is best for budget-conscious students with near-zero tuition. Canada balances both with strong PR pathways.
                     </p>
                   </div>
+
+                  {/* Poonawalla banner — uses LinkButton to avoid tag rendering issues */}
+                  <div className="mt-4 p-5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">🏦 Fund your degree with Poonawalla Fincorp</p>
+                      <p className="text-xs text-emerald-700 font-medium">Education loans up to ₹50L · Starting 11.5% p.a. · Minimal documentation · Quick disbursal</p>
+                    </div>
+                    <LinkButton href={POONAWALLA_URL} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all no-underline whitespace-nowrap">
+                      Apply Now →
+                    </LinkButton>
+                  </div>
+
                   <button
                     onClick={() => { setShowCountryCompare(false); handleSend("Compare USA vs Germany vs Canada ROI for my exact profile and give me your top recommendation with reasoning."); }}
                     className="mt-6 w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
@@ -608,7 +634,7 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          {/* ✅ EMI CALCULATOR MODAL */}
+          {/* EMI Calculator Modal */}
           <AnimatePresence>
             {showEMICalc && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -617,16 +643,17 @@ export default function App() {
                 <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                   onClick={e => e.stopPropagation()}
                   className="bg-white rounded-[40px] p-10 shadow-2xl max-w-lg w-full border border-slate-100">
+
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <h3 className="text-2xl font-bold text-slate-900">EMI Calculator</h3>
-                      <p className="text-xs text-slate-400 mt-1 font-medium">Education Loan · Powered by Poonawalla Fincorp</p>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">Education Loan · Rate: 11.5% p.a. · Poonawalla Fincorp</p>
                     </div>
-                    <button onClick={() => setShowEMICalc(false)}
-                      className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
+                    <button onClick={() => setShowEMICalc(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
                       <X size={18} />
                     </button>
                   </div>
+
                   <div className="space-y-6">
                     <div>
                       <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Loan Amount (₹)</label>
@@ -677,16 +704,28 @@ export default function App() {
                       </div>
                     </motion.div>
                   )}
-                  <button
-                    onClick={() => { setShowEMICalc(false); handleSend(`My education loan is ₹${parseFloat(emiLoan).toLocaleString()} at ${emiRate}% for ${emiTenure} years. Monthly EMI is ₹${emiResult.toLocaleString()}. Is this affordable for my profile? Give me a repayment strategy.`); }}
-                    className="mt-6 w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
-                    <Sparkles size={18} /> Ask AI to Analyze This Loan
-                  </button>
+
+                  {/* Two buttons — uses LinkButton for the Poonawalla CTA */}
+                  <div className="mt-6 flex flex-col gap-3">
+                    <button
+                      onClick={() => { setShowEMICalc(false); handleSend(`My education loan is ₹${parseFloat(emiLoan).toLocaleString()} at ${emiRate}% for ${emiTenure} years. Monthly EMI is ₹${emiResult.toLocaleString()}. Is this affordable for my profile? Give me a repayment strategy.`); }}
+                      className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
+                      <Sparkles size={18} /> Ask AI to Analyze This Loan
+                    </button>
+                    <LinkButton href={POONAWALLA_URL} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-center no-underline">
+                      <GraduationCap size={18} /> Apply with Poonawalla Fincorp →
+                    </LinkButton>
+                    <p className="text-center text-[10px] text-slate-400 font-medium">
+                      Education loans from ₹1L to ₹50L · Rate starting 11.5% p.a. · Quick approval
+                    </p>
+                  </div>
+
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
 
+          {/* Chat */}
           <AnimatePresence>
             {!isChatOpen ? (
               <motion.button
