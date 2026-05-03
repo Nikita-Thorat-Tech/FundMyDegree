@@ -10,12 +10,12 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCzKPOXJj6ABTS9ugn_drYARpuL8YjqWwU",
-  authDomain: "fundmydegree.firebaseapp.com",
-  projectId: "fundmydegree",
-  storageBucket: "fundmydegree.firebasestorage.app",
-  messagingSenderId: "160796111487",
-  appId: "1:160796111487:web:856c14424cd5288dbcc54a"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
