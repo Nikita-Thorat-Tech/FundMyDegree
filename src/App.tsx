@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   GraduationCap, Wallet, ShieldCheck, Sparkles, Send, Loader2, RefreshCcw,
   MessageSquare, HelpCircle, Briefcase, Target, Zap, Layers, Search, X,
-  History, UserCircle, TrendingUp, Scale, Coins, ArrowLeft, AlertCircle
+  History, UserCircle, TrendingUp, Scale, Coins, ArrowLeft, AlertCircle,
+  Globe, Calculator
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { UserProfile, ChatMessage, Mode, ActivityItem, DashboardState } from './types';
@@ -50,15 +51,17 @@ function calculateDashboard(profile: UserProfile): DashboardState {
   };
 }
 
-function getSalaryData(field: string) {
+function getSalaryEMIData(field: string, emiMonthly: number) {
   const baseMap: Record<string, number> = {
     'Computer Science': 75000, 'Data Science': 72000, 'Finance': 65000,
     'Engineering': 68000, 'Business': 60000, 'Healthcare': 62000, 'Law': 64000
   };
   const base = baseMap[field] || 65000;
+  const emiAnnual = emiMonthly * 12;
   return Array.from({ length: 10 }, (_, i) => ({
-    year: String(i + 1),
-    salary: Math.round(base * Math.pow(1.12, i))
+    year: `Yr ${i + 1}`,
+    salary: Math.round(base * Math.pow(1.12, i)),
+    emi: Math.round(emiAnnual * Math.pow(1.02, i)),
   }));
 }
 
@@ -71,6 +74,15 @@ const INITIAL_HISTORY: ActivityItem[] = [
   { id: '1', action: "Simulated USA MS Outcome", timestamp: "10 mins ago", icon: 'outcome' },
   { id: '2', action: "Compared Germany vs USA ROI", timestamp: "25 mins ago", icon: 'compare' },
   { id: '3', action: "Checked Loan Odds", timestamp: "1 hour ago", icon: 'loan' },
+];
+
+const COUNTRY_DATA = [
+  { country: 'USA', flag: '🇺🇸', cost: 65000, salary: 95000, loan: 'High', score: 92, visa: 'F-1', tuition: '$30–55k/yr' },
+  { country: 'Canada', flag: '🇨🇦', cost: 40000, salary: 72000, loan: 'High', score: 88, visa: 'Study Permit', tuition: '$20–35k/yr' },
+  { country: 'Germany', flag: '🇩🇪', cost: 8000, salary: 58000, loan: 'Medium', score: 85, visa: 'Student Visa', tuition: 'Free–€3k/yr' },
+  { country: 'UK', flag: '🇬🇧', cost: 45000, salary: 68000, loan: 'Medium', score: 79, visa: 'Student Visa', tuition: '£15–35k/yr' },
+  { country: 'Australia', flag: '🇦🇺', cost: 42000, salary: 70000, loan: 'Medium', score: 77, visa: 'Student Visa', tuition: 'A$25–45k/yr' },
+  { country: 'Netherlands', flag: '🇳🇱', cost: 18000, salary: 55000, loan: 'Low', score: 74, visa: 'MVV', tuition: '€8–20k/yr' },
 ];
 
 export default function App() {
@@ -86,7 +98,23 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [showCountryCompare, setShowCountryCompare] = useState(false);
+  const [showEMICalc, setShowEMICalc] = useState(false);
+  const [emiLoan, setEmiLoan] = useState('2000000');
+  const [emiRate, setEmiRate] = useState('10.5');
+  const [emiTenure, setEmiTenure] = useState('10');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const calcEMI = () => {
+    const P = parseFloat(emiLoan) || 0;
+    const r = (parseFloat(emiRate) || 0) / 12 / 100;
+    const n = (parseFloat(emiTenure) || 0) * 12;
+    if (!P || !r || !n) return 0;
+    return Math.round(P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+  };
+  const emiResult = calcEMI();
+  const totalPayable = emiResult * parseFloat(emiTenure) * 12;
+  const totalInterest = totalPayable - parseFloat(emiLoan || '0');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -122,11 +150,15 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isChatOpen) setIsChatOpen(false);
+      if (e.key === 'Escape') {
+        if (isChatOpen) setIsChatOpen(false);
+        if (showCountryCompare) setShowCountryCompare(false);
+        if (showEMICalc) setShowEMICalc(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isChatOpen]);
+  }, [isChatOpen, showCountryCompare, showEMICalc]);
 
   const handleProfileComplete = (profileData: any) => {
     const newProfile: UserProfile = {
@@ -134,13 +166,13 @@ export default function App() {
       gpa: parseFloat(profileData.gpa) || 0,
       field: profileData.field,
       goal: `${profileData.degree} in ${profileData.field}`,
-      budget: profileData.budget / 75,
+      budget: Math.round(profileData.budget / 75),
       preferredCountries: profileData.countries,
       educationLevel: profileData.degree
     };
     setProfile(newProfile);
     setDashboard(calculateDashboard(newProfile));
-    setCurrentView('dashboard'); // instant redirect — before Firestore
+    setCurrentView('dashboard');
     if (user) {
       setDoc(doc(db, 'profiles', user.uid), newProfile)
         .then(() => setProfileSaved(true))
@@ -196,7 +228,7 @@ export default function App() {
 
   if (!user) return <AuthPage />;
 
-  const salaryData = getSalaryData(profile.field);
+  const chartData = getSalaryEMIData(profile.field, dashboard.incomeEMI.emi);
 
   return (
     <>
@@ -315,12 +347,14 @@ export default function App() {
                   </div>
                 </motion.section>
 
-                <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                {/* Quick Actions — now with Globe + Calculator */}
+                <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
                   <QuickAction icon={<Scale size={20} />} label="Worst Case" onClick={() => handleSend("Simulate the worst-case scenario for my plan.")} />
                   <QuickAction icon={<Coins size={20} />} label="Negotiate Cost" onClick={() => handleSend("Can you optimize my costs or suggest cheaper alternatives?")} />
                   <QuickAction icon={<TrendingUp size={20} />} label="Life Outcome" onClick={() => handleSend("Show me my 10-year life outcome projection.")} />
                   <QuickAction icon={<Briefcase size={20} />} label="Career Roadmap" onClick={() => handleSend("What does my career roadmap look like after this degree?")} />
-                  <QuickAction icon={<Zap size={20} />} label="Timeline Sync" onClick={() => handleSend("Generate a smart timeline for my prep.")} className="hidden lg:flex" />
+                  <QuickAction icon={<Globe size={20} />} label="Compare Countries" onClick={() => setShowCountryCompare(true)} />
+                  <QuickAction icon={<Calculator size={20} />} label="EMI Calculator" onClick={() => setShowEMICalc(true)} />
                 </section>
 
                 <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -369,34 +403,85 @@ export default function App() {
                       </VisualInsightCard>
                     </div>
 
+                    {/* Life Outcome Simulator */}
                     <div className="bg-white rounded-[40px] p-10 border border-slate-200 shadow-xl shadow-slate-200/40">
-                      <div className="flex justify-between items-center mb-10">
+                      <div className="flex justify-between items-center mb-6">
                         <div className="space-y-1">
-                          <h3 className="text-xl font-bold text-slate-800">Income vs Growth Simulation</h3>
-                          <p className="text-xs text-slate-400 font-medium italic">Predictive data for {profile.field || 'Computer Science'} graduates</p>
+                          <h3 className="text-xl font-bold text-slate-800">Life Outcome Simulator</h3>
+                          <p className="text-xs text-slate-400 font-medium italic">Salary vs EMI Risk Zones · {profile.field || 'Computer Science'} · 10-Year Projection</p>
                         </div>
-                        <button
-                          onClick={() => handleSend(`Show me detailed salary growth for ${profile.field} over 10 years`)}
-                          className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Ask AI for details">
-                          <RefreshCcw size={18} />
-                        </button>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-indigo-500" /><span className="text-[10px] font-bold text-slate-400 uppercase">Salary</span></div>
+                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-rose-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">EMI</span></div>
+                          <button
+                            onClick={() => handleSend("Show me my 10-year life outcome projection with salary vs EMI analysis.")}
+                            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Ask AI for details">
+                            <RefreshCcw size={18} />
+                          </button>
+                        </div>
                       </div>
                       <div className="h-80 min-h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <RechartsAreaChart data={salaryData}>
+                          <RechartsAreaChart data={chartData}>
                             <defs>
-                              <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} />
+                              <linearGradient id="salaryGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.15} />
                                 <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="emiGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.15} />
+                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={(v) => `$${v / 1000}k`} width={50} />
-                            <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', padding: '16px' }} formatter={(v: any) => [`$${Number(v).toLocaleString()}`, 'Salary']} />
-                            <Area type="monotone" dataKey="salary" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorPrimary)" />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', padding: '16px' }}
+                              formatter={(v: any, name: string) => [`$${Number(v).toLocaleString()}`, name === 'salary' ? '💰 Salary' : '📋 EMI Burden']}
+                            />
+                            <Area type="monotone" dataKey="salary" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#salaryGrad)" name="salary" />
+                            <Area type="monotone" dataKey="emi" stroke="#f43f5e" strokeWidth={3} strokeDasharray="6 3" fillOpacity={1} fill="url(#emiGrad)" name="emi" />
                           </RechartsAreaChart>
                         </ResponsiveContainer>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mt-8">
+                        <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">🟢 Safe Zone</p>
+                          </div>
+                          <p className="text-xs text-emerald-600 font-medium">Salary significantly exceeds EMI. Comfortable repayment + savings possible.</p>
+                        </div>
+                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">🟡 Moderate Zone</p>
+                          </div>
+                          <p className="text-xs text-amber-600 font-medium">Salary covers EMI with some strain. Requires disciplined spending.</p>
+                        </div>
+                        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-rose-500" />
+                            <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">🔴 Risk Zone</p>
+                          </div>
+                          <p className="text-xs text-rose-600 font-medium">EMI burden exceeds salary. AI recommends alternative options.</p>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "mt-6 p-4 rounded-2xl flex items-center gap-3",
+                        dashboard.riskScore === 'Safe' ? "bg-emerald-50 border border-emerald-100" :
+                        dashboard.riskScore === 'Moderate' ? "bg-amber-50 border border-amber-100" :
+                        "bg-rose-50 border border-rose-100"
+                      )}>
+                        <span className="text-lg">{dashboard.riskScore === 'Safe' ? '🟢' : dashboard.riskScore === 'Moderate' ? '🟡' : '🔴'}</span>
+                        <div>
+                          <p className={cn("text-xs font-bold uppercase tracking-wider",
+                            dashboard.riskScore === 'Safe' ? "text-emerald-700" :
+                            dashboard.riskScore === 'Moderate' ? "text-amber-700" : "text-rose-700"
+                          )}>Your Profile: {dashboard.riskScore} Zone — AI Confirmed</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Monthly Salary ${dashboard.incomeEMI.income.toLocaleString()} vs EMI ${dashboard.incomeEMI.emi.toLocaleString()} · Payback {dashboard.roi.payback}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -443,6 +528,165 @@ export default function App() {
             </main>
           </div>
 
+          {/* ✅ COUNTRY COMPARISON MODAL */}
+          <AnimatePresence>
+            {showCountryCompare && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-6"
+                onClick={() => setShowCountryCompare(false)}>
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="bg-white rounded-[40px] p-10 shadow-2xl max-w-4xl w-full border border-slate-100 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900">Country Comparison Engine</h3>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">Based on your {profile.field} profile · AI Ranked by ROI</p>
+                    </div>
+                    <button onClick={() => setShowCountryCompare(false)}
+                      className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Country</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Tuition</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Total Cost</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Avg Salary</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Payback</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Loan</th>
+                          <th className="pb-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">AI Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {COUNTRY_DATA.map((row, i) => (
+                          <tr key={row.country} className={cn("border-t border-slate-100", i === 0 ? "bg-indigo-50/60" : "")}>
+                            <td className="py-4 font-bold text-slate-900 flex items-center gap-2">
+                              <span className="text-xl">{row.flag}</span>
+                              <span>{row.country}</span>
+                              {i === 0 && <span className="ml-1 text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Best ROI</span>}
+                            </td>
+                            <td className="py-4 text-slate-600 font-medium text-xs">{row.tuition}</td>
+                            <td className="py-4 font-mono font-bold text-slate-800">${(row.cost / 1000).toFixed(0)}k</td>
+                            <td className="py-4 font-mono font-bold text-emerald-600">${(row.salary / 1000).toFixed(0)}k</td>
+                            <td className="py-4 font-bold text-slate-700">{(row.cost / row.salary).toFixed(1)} yrs</td>
+                            <td className="py-4">
+                              <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide",
+                                row.loan === 'High' ? "bg-emerald-100 text-emerald-700" :
+                                row.loan === 'Medium' ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700")}>
+                                {row.loan}
+                              </span>
+                            </td>
+                            <td className="py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 bg-slate-100 rounded-full w-16 overflow-hidden">
+                                  <div className="h-full bg-indigo-600 rounded-full transition-all" style={{ width: `${row.score}%` }} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{row.score}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-8 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
+                    <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">💡 AI Recommendation for your profile</p>
+                    <p className="text-sm text-slate-700 font-medium">
+                      With your {profile.field} background and GPA {profile.gpa > 0 ? profile.gpa : '—'}, <strong>USA</strong> offers the highest salary ceiling ($95k) while <strong>Germany</strong> is best for budget-conscious students with near-zero tuition. Canada balances both with strong PR pathways.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setShowCountryCompare(false); handleSend("Compare USA vs Germany vs Canada ROI for my exact profile and give me your top recommendation with reasoning."); }}
+                    className="mt-6 w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                    <Sparkles size={18} /> Ask AI for Personalized Recommendation
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ✅ EMI CALCULATOR MODAL */}
+          <AnimatePresence>
+            {showEMICalc && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-6"
+                onClick={() => setShowEMICalc(false)}>
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="bg-white rounded-[40px] p-10 shadow-2xl max-w-lg w-full border border-slate-100">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900">EMI Calculator</h3>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">Education Loan · Powered by Poonawalla Fincorp</p>
+                    </div>
+                    <button onClick={() => setShowEMICalc(false)}
+                      className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Loan Amount (₹)</label>
+                      <input type="number" value={emiLoan} onChange={e => setEmiLoan(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-transparent transition-all" />
+                      <p className="text-xs text-slate-400 mt-1">= ₹{(parseFloat(emiLoan || '0') / 100000).toFixed(1)}L</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Interest Rate (% per year)</label>
+                      <input type="number" value={emiRate} onChange={e => setEmiRate(e.target.value)} step="0.1"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-transparent transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 block">Tenure (Years)</label>
+                      <input type="number" value={emiTenure} onChange={e => setEmiTenure(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-transparent transition-all" />
+                    </div>
+                  </div>
+
+                  {emiResult > 0 && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 space-y-4">
+                      <div className="p-6 bg-indigo-600 rounded-3xl text-white text-center">
+                        <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 mb-2">Monthly EMI</p>
+                        <p className="text-4xl font-black tracking-tight">₹{emiResult.toLocaleString()}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Payable</p>
+                          <p className="text-lg font-bold text-slate-800">₹{Math.round(totalPayable).toLocaleString()}</p>
+                        </div>
+                        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 text-center">
+                          <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-1">Total Interest</p>
+                          <p className="text-lg font-bold text-rose-600">₹{Math.round(totalInterest).toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <div className={cn("p-4 rounded-2xl flex items-center gap-3",
+                        emiResult < dashboard.incomeEMI.income * 0.4 ? "bg-emerald-50 border border-emerald-100" :
+                        emiResult < dashboard.incomeEMI.income * 0.6 ? "bg-amber-50 border border-amber-100" :
+                        "bg-rose-50 border border-rose-100")}>
+                        <span>{emiResult < dashboard.incomeEMI.income * 0.4 ? '🟢' : emiResult < dashboard.incomeEMI.income * 0.6 ? '🟡' : '🔴'}</span>
+                        <p className="text-xs font-bold text-slate-700">
+                          {emiResult < dashboard.incomeEMI.income * 0.4
+                            ? 'Comfortable — EMI is under 40% of projected income ✅'
+                            : emiResult < dashboard.incomeEMI.income * 0.6
+                            ? 'Moderate — EMI is 40–60% of income. Manageable with discipline.'
+                            : 'High Risk — EMI exceeds 60% of projected income. Consider lower loan or longer tenure.'}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                  <button
+                    onClick={() => { setShowEMICalc(false); handleSend(`My education loan is ₹${parseFloat(emiLoan).toLocaleString()} at ${emiRate}% for ${emiTenure} years. Monthly EMI is ₹${emiResult.toLocaleString()}. Is this affordable for my profile? Give me a repayment strategy.`); }}
+                    className="mt-6 w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
+                    <Sparkles size={18} /> Ask AI to Analyze This Loan
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence>
             {!isChatOpen ? (
               <motion.button
@@ -484,7 +728,6 @@ export default function App() {
                       <X size={24} strokeWidth={3} />
                     </button>
                   </div>
-
                   <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar bg-slate-50/30">
                     {messages.length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-center px-10 py-16">
@@ -529,7 +772,6 @@ export default function App() {
                     )}
                     <div ref={chatEndRef} />
                   </div>
-
                   <div className="p-8 border-t border-slate-100 bg-white">
                     <div className="relative">
                       <input value={input} onChange={(e) => setInput(e.target.value)}
